@@ -78,7 +78,10 @@ pub fn from_text(text: &str) -> Result<Credentials, CredentialError> {
     let token = find(&["token", "afdian_token", "api_token"]);
     let user_id = find(&["user_id", "afdian_user_id", "userid"]);
     match (token, user_id) {
-        (Some(t), Some(u)) => Ok(Credentials { token: t, user_id: u }),
+        (Some(t), Some(u)) => Ok(Credentials {
+            token: t,
+            user_id: u,
+        }),
         _ => Err(CredentialError::Malformed(
             "需要同时提供 token 与 user_id".into(),
         )),
@@ -88,7 +91,9 @@ pub fn from_text(text: &str) -> Result<Credentials, CredentialError> {
 /// 按「环境变量 → 配置文件」顺序解析。
 pub fn resolve() -> Result<Credentials, CredentialError> {
     let env_token = std::env::var("AFDIAN_TOKEN").ok().filter(|s| !s.is_empty());
-    let env_user = std::env::var("AFDIAN_USER_ID").ok().filter(|s| !s.is_empty());
+    let env_user = std::env::var("AFDIAN_USER_ID")
+        .ok()
+        .filter(|s| !s.is_empty());
     if let (Some(token), Some(user_id)) = (env_token, env_user) {
         return Ok(Credentials { token, user_id });
     }

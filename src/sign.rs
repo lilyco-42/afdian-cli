@@ -19,9 +19,8 @@ pub struct SigningInput<'a> {
 impl<'a> SigningInput<'a> {
     /// 拼出待签名原文。顺序必须与官方一致，否则签名校验不通过。
     pub fn payload(&self) -> String {
-        let mut s = String::with_capacity(
-            self.token.len() + self.params.len() + self.user_id.len() + 48,
-        );
+        let mut s =
+            String::with_capacity(self.token.len() + self.params.len() + self.user_id.len() + 48);
         s.push_str(self.token);
         s.push_str("params");
         s.push_str(self.params);
@@ -89,10 +88,7 @@ pub fn md5_hex(input: &[u8]) -> String {
             let tmp = d;
             d = c;
             c = b;
-            let sum = a
-                .wrapping_add(f)
-                .wrapping_add(K[i])
-                .wrapping_add(m[g]);
+            let sum = a.wrapping_add(f).wrapping_add(K[i]).wrapping_add(m[g]);
             b = b.wrapping_add(sum.rotate_left(S[i]));
             a = tmp;
         }

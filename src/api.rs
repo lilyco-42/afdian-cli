@@ -128,7 +128,11 @@ pub fn build(creds: &Credentials, path: &str, params: serde_json::Value, ts: u64
 }
 
 /// 发出请求并校验业务码。
-pub fn call(creds: &Credentials, path: &str, params: serde_json::Value) -> Result<serde_json::Value, ApiError> {
+pub fn call(
+    creds: &Credentials,
+    path: &str,
+    params: serde_json::Value,
+) -> Result<serde_json::Value, ApiError> {
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -139,7 +143,10 @@ pub fn call(creds: &Credentials, path: &str, params: serde_json::Value) -> Resul
 
     let resp = ureq::post(&url)
         .set("Content-Type", "application/json")
-        .set("User-Agent", "afdian-cli/0.1 (+https://github.com/lilyco-42/afdian-cli)")
+        .set(
+            "User-Agent",
+            "afdian-cli/0.1 (+https://github.com/lilyco-42/afdian-cli)",
+        )
         .send_string(&req.body)
         .map_err(|e| match e {
             ureq::Error::Status(code, r) => {
@@ -153,8 +160,12 @@ pub fn call(creds: &Credentials, path: &str, params: serde_json::Value) -> Resul
         .into_string()
         .map_err(|e| ApiError::Network(e.to_string()))?;
 
-    let json: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| ApiError::Decode(format!("{e}: {}", text.chars().take(200).collect::<String>())))?;
+    let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+        ApiError::Decode(format!(
+            "{e}: {}",
+            text.chars().take(200).collect::<String>()
+        ))
+    })?;
 
     let ec = json.get("ec").and_then(|v| v.as_i64()).unwrap_or(-1);
     if ec != 200 {

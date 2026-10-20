@@ -106,15 +106,18 @@ where
             page: page_of(&argv[1..])?,
         }),
         "checkout" => {
-            let plan_id = argv
-                .get(1)
-                .ok_or_else(|| ParseError("用法：afdian checkout <plan_id> [custom_order_id]".into()))?;
+            let plan_id = argv.get(1).ok_or_else(|| {
+                ParseError("用法：afdian checkout <plan_id> [custom_order_id]".into())
+            })?;
             validate_plan_id(plan_id)?;
             let custom = argv.get(2).cloned().unwrap_or_else(|| {
-                format!("AF{:x}", std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_nanos())
-                    .unwrap_or(0))
+                format!(
+                    "AF{:x}",
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_nanos())
+                        .unwrap_or(0)
+                )
             });
             Ok(Command::Checkout {
                 plan_id: plan_id.clone(),
@@ -180,7 +183,10 @@ where
             plan_id,
             custom_order_id,
         } => {
-            progress(Progress::Running { current: 1, total: 1 });
+            progress(Progress::Running {
+                current: 1,
+                total: 1,
+            });
             Outcome {
                 text: format!(
                     "{}\n\n把用户跳转到上面的链接即可。custom_order_id={}",
@@ -202,7 +208,10 @@ where
                 }
             };
 
-            progress(Progress::Running { current: 1, total: 2 });
+            progress(Progress::Running {
+                current: 1,
+                total: 2,
+            });
             match cmd {
                 Command::Whoami => whoami(&creds),
                 Command::Plans { page } => plans(&creds, *page),
@@ -275,9 +284,18 @@ fn orders(creds: &Credentials, page: u32) -> Outcome {
                     .unwrap_or(list.len() as i64);
                 lines.push(format!("共 {count} 条订单（第 {page} 页）"));
                 for o in list {
-                    let no = o.get("out_trade_no").and_then(|v| v.as_str()).unwrap_or("-");
-                    let amount = o.get("total_amount").and_then(|v| v.as_str()).unwrap_or("?");
-                    let custom = o.get("custom_order_id").and_then(|v| v.as_str()).unwrap_or("");
+                    let no = o
+                        .get("out_trade_no")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let amount = o
+                        .get("total_amount")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("?");
+                    let custom = o
+                        .get("custom_order_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     lines.push(format!(
                         "  ¥{amount:<8} {no}{}",
                         if custom.is_empty() {
@@ -355,4 +373,3 @@ mod tests {
         assert!(HELP.contains("AFDIAN_TOKEN"));
     }
 }
-

@@ -12,5 +12,5 @@ pub mod commands;
 pub mod config;
 pub mod sign;
 
-pub use commands::{parse, execute, Command, HELP};
+pub use commands::{execute, parse, Command, HELP};
 pub use config::Credentials;
