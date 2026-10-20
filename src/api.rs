@@ -267,4 +267,3 @@ mod tests {
         assert!(e.to_string().contains("400"));
     }
 }
-
