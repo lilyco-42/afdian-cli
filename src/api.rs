@@ -57,14 +57,21 @@ pub fn compact_json(value: &serde_json::Value) -> String {
 fn write_compact(v: &serde_json::Value, out: &mut String) {
     match v {
         serde_json::Value::Object(map) => {
+            // 键必须排序：签名是对参数字节序列做 MD5，顺序不稳会导致
+            // 同样的参数算出不同签名。serde_json 的 Map 在未开
+            // preserve_order 时是 BTreeMap（有序），但显式排序才不依赖特性开关。
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort_unstable();
             out.push('{');
-            for (i, (k, val)) in map.iter().enumerate() {
+            for (i, k) in keys.into_iter().enumerate() {
                 if i > 0 {
                     out.push(',');
                 }
                 push_escaped(k, out);
                 out.push(':');
-                write_compact(val, out);
+                if let Some(val) = map.get(k) {
+                    write_compact(val, out);
+                }
             }
             out.push('}');
         }
@@ -195,7 +202,20 @@ mod tests {
     #[test]
     fn compact_json_keeps_cjk_raw() {
         let s = compact_json(&json!({"name": "中文", "n": 1}));
-        assert_eq!(s, r#"{"name":"中文","n":1}"#);
+        // 键按键名排序，中文值原样保留（不能被转义成 \uXXXX）。
+        assert_eq!(s, r#"{"n":1,"name":"中文"}"#);
+        assert!(s.contains("中文"));
+        assert!(!s.contains("\\u"));
+    }
+
+    #[test]
+    fn compact_json_key_order_is_stable() {
+        // 同样内容、不同插入顺序，必须得到同样的字节序列，
+        // 否则签名会随构建顺序漂移。
+        let a = compact_json(&json!({"b": 2, "a": 1}));
+        let b = compact_json(&json!({"a": 1, "b": 2}));
+        assert_eq!(a, b);
+        assert_eq!(a, r#"{"a":1,"b":2}"#);
     }
 
     #[test]
@@ -232,3 +252,4 @@ mod tests {
         assert!(e.to_string().contains("400"));
     }
 }
+
