@@ -1,0 +1,8 @@
+/target
+/dist
+**/*.rs.bk
+Cargo.lock.orig
+.idea/
+.vscode/
+*.swp
+.DS_Store
