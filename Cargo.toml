@@ -21,6 +21,8 @@ net = ["dep:ureq", "dep:serde_json"]
 # tiny_lilyco 是 lilyco 仓库的子 crate（自带独立 [workspace]）。
 # 用 git 依赖时 cargo 会去仓库根找 Cargo.toml，因此必须显式指向子目录。
 tiny_lilyco = { git = "https://github.com/lilyco-42/lilyco", branch = "main" }
+# 密码学一律用现成实现，见 lilyco-crypto 的 AGENTS.md。
+lilyco-crypto = { git = "https://github.com/lilyco-42/lilyco-crypto", tag = "v0.1.0", default-features = false }
 serde_json = { version = "1", optional = true }
 ureq = { version = "2", optional = true, features = ["json"] }
 
@@ -37,3 +39,4 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+

@@ -4,7 +4,7 @@
 //! 所有请求都走同一套签名，参数固定为紧凑 JSON。
 
 use crate::config::Credentials;
-use crate::sign::SigningInput;
+use lilyco_crypto::afdian::SigningInput;
 
 /// 接口基址。
 pub const BASE: &str = "https://afdian.com";
@@ -113,13 +113,15 @@ fn push_escaped(s: &str, out: &mut String) {
 /// 构造签名请求。
 pub fn build(creds: &Credentials, path: &str, params: serde_json::Value, ts: u64) -> SignedRequest {
     let params_json = compact_json(&params);
-    let sign = SigningInput {
+    // sign() 返回 [u8; 32] 的十六进制字节，转成 String 才能进 JSON。
+    let sign_bytes = SigningInput {
         token: &creds.token,
         user_id: &creds.user_id,
         params: &params_json,
         ts,
     }
     .sign();
+    let sign = String::from_utf8_lossy(&sign_bytes).into_owned();
 
     let body = serde_json::json!({
         "user_id": creds.user_id,
@@ -240,6 +242,19 @@ mod tests {
     }
 
     #[test]
+    fn sign_is_hex_string_not_byte_array() {
+        // lilyco-crypto 的 sign() 返回 [u8; 32]，必须转成字符串，
+        // 否则 JSON 里会出现 "[100,101,...]" 这种数组。
+        let r = build(&creds(), "/api/x", json!({}), 100);
+        let v: serde_json::Value = serde_json::from_str(&r.body).unwrap();
+        let sign = v.get("sign").expect("sign 字段");
+        assert!(sign.is_string(), "sign 必须是字符串，实际是 {sign}");
+        let s = sign.as_str().unwrap();
+        assert_eq!(s.len(), 32, "sign 应为 32 位十六进制");
+        assert!(s.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
     fn sign_depends_on_params() {
         let a = build(&creds(), "/p", json!({"page": 1}), 100);
         let b = build(&creds(), "/p", json!({"page": 2}), 100);
@@ -252,3 +267,4 @@ mod tests {
         assert!(e.to_string().contains("400"));
     }
 }
+
