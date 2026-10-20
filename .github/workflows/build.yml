@@ -87,7 +87,7 @@ jobs:
           fi
 
       - name: 编译
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: 整理产物
         shell: bash
@@ -127,4 +127,5 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
 
