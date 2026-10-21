@@ -147,9 +147,9 @@ where
         "orders" => {
             // orders --no 2026...  按订单号精确查
             if argv.get(1).map(String::as_str) == Some("--no") {
-                let no = argv.get(2).ok_or_else(|| {
-                    ParseError("用法：afdian orders --no <out_trade_no>".into())
-                })?;
+                let no = argv
+                    .get(2)
+                    .ok_or_else(|| ParseError("用法：afdian orders --no <out_trade_no>".into()))?;
                 validate_trade_no(no)?;
                 return Ok(Command::Orders {
                     page: 1,
@@ -472,7 +472,9 @@ fn sponsors(creds: &Credentials, page: u32) -> Outcome {
 
             let mut lines = Vec::new();
             match (total, pages) {
-                (Some(t), Some(p)) => lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）")),
+                (Some(t), Some(p)) => {
+                    lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）"))
+                }
                 _ => lines.push(format!("第 {page} 页，{} 位", list.len())),
             }
 
@@ -583,7 +585,10 @@ mod tests {
                 out_trade_no: None
             }
         );
-        assert_eq!(parse(["sponsors", "3"]).unwrap(), Command::Sponsors { page: 3 });
+        assert_eq!(
+            parse(["sponsors", "3"]).unwrap(),
+            Command::Sponsors { page: 3 }
+        );
     }
 
     #[test]
@@ -687,4 +692,3 @@ mod tests {
         assert_eq!(status_text(99), "未知");
     }
 }
-
