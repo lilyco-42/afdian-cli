@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
-description = "爱发电 CLI · 用 tiny_lilyco 框架一键对接爱发电开放接口"
+description = "爱发电 CLI · 声明式命令骨架，一键对接爱发电开放接口（方案/下单/订单/查询）"
 repository = "https://github.com/lilyco-42/afdian-cli"
 homepage = "https://github.com/lilyco-42/afdian-cli"
 keywords = ["afdian", "cli", "payments", "lilyco", "mcp"]
@@ -18,11 +18,10 @@ default = ["net"]
 net = ["dep:ureq", "dep:serde_json"]
 
 [dependencies]
-# tiny_lilyco 是 lilyco 仓库的子 crate（自带独立 [workspace]）。
-# 用 git 依赖时 cargo 会去仓库根找 Cargo.toml，因此必须显式指向子目录。
-tiny_lilyco = { git = "https://github.com/lilyco-42/lilyco", branch = "main" }
 # 密码学一律用现成实现，见 lilyco-crypto 的 AGENTS.md。
-lilyco-crypto = { git = "https://github.com/lilyco-42/lilyco-crypto", tag = "v0.1.0", default-features = false }
+# 用 crates.io 版本而不是 git——crates.io 不接受 git 依赖，
+# 而 cargo binstall 要求 crate 本身已发布。
+lilyco-crypto = { version = "0.1.1", default-features = false }
 serde_json = { version = "1", optional = true }
 ureq = { version = "2", optional = true, features = ["json"] }
 
@@ -40,3 +39,13 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
+# cargo binstall 支持。产物由 CI 构建并上传到 GitHub Releases。
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/afdian-{ target }{ archive-suffix }"
+pkg-fmt = "bin"
+bin-dir = "{ bin }{ binary-ext }"
+disabled-strategies = ["quick-install", "compile"]
+
+# Linux 只产出 musl 静态二进制，gnu 请求映射过去。
+[package.metadata.binstall.overrides.'cfg(all(target_os = "linux", target_env = "gnu"))']
+pkg-url = "{ repo }/releases/download/v{ version }/afdian-{ target-arch }-unknown-linux-musl{ archive-suffix }"

@@ -5,7 +5,7 @@
 
 use crate::api;
 use crate::config::{self, Credentials};
-use tiny_lilyco::prelude::{CommandSchema, Progress};
+use crate::schema::{CommandSchema, Progress};
 
 /// 支持的命令。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -373,3 +373,4 @@ mod tests {
         assert!(HELP.contains("AFDIAN_TOKEN"));
     }
 }
+

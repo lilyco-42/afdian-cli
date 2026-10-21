@@ -53,16 +53,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            artifact: afdian-linux-x86_64
+            artifact: afdian-x86_64-unknown-linux-musl
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            artifact: afdian-linux-aarch64
+            artifact: afdian-aarch64-unknown-linux-musl
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: afdian-windows-x86_64.exe
+            artifact: afdian-x86_64-pc-windows-msvc.exe
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: afdian-macos-arm64
+            artifact: afdian-aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v4
 
@@ -127,5 +127,19 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+  # 发布到 crates.io，让 `cargo binstall afdian-cli` 能查到。
+  # 顺序：先发 Release 上传二进制，再发 crate，避免空窗期。
+  publish:
+    name: publish / crates.io
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - uses: dtolnay/rust-toolchain@stable
 
+      - name: 发布
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --registry crates-io

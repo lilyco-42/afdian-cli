@@ -18,14 +18,24 @@
 
 ## 安装
 
+### cargo binstall（推荐）
+
+```bash
+cargo binstall afdian-cli
+```
+
+一条命令装好，不编译。
+
+### 直接下载
+
 从 [Releases](https://github.com/lilyco-42/afdian-cli/releases) 下载对应平台：
 
 | 平台 | 文件 |
 | --- | --- |
-| Linux x86_64 | `afdian-linux-x86_64` |
-| Linux aarch64 | `afdian-linux-aarch64` |
-| Windows x86_64 | `afdian-windows-x86_64.exe` |
-| macOS Apple Silicon | `afdian-macos-arm64` |
+| Linux x86_64 | `afdian-x86_64-unknown-linux-musl` |
+| Linux aarch64 | `afdian-aarch64-unknown-linux-musl` |
+| Windows x86_64 | `afdian-x86_64-pc-windows-msvc.exe` |
+| macOS Apple Silicon | `afdian-aarch64-apple-darwin` |
 
 Linux 产物是静态链接（musl），可以直接扔进 Alpine 容器。
 
@@ -111,3 +121,4 @@ git tag v0.1.0 && git push origin v0.1.0
 ## 许可
 
 [MIT](LICENSE)
+
