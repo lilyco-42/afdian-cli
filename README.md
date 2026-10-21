@@ -70,7 +70,10 @@ afdian orders 2                    # 第 2 页
 afdian orders --no <订单号>         # 按订单号查单条
 afdian sponsors                    # 赞助者列表
 afdian checkout <plan_id>          # 生成收银台链接
-afdian help
+afdian help                        # 显示帮助
+
+全局选项:
+  --json                            输出单行 JSON，供脚本消费
 ```
 
 ### 关于「列出全部方案」
@@ -111,6 +114,32 @@ afdian checkout 63f94afacc9d11f19fbe5254001e7c00 LA42-2026-001
 ```bash
 afdian orders | grep 已支付
 ```
+
+### JSON 输出
+
+加 `--json` 输出单行紧凑 JSON，供脚本消费。标志可放在任意位置。
+
+```bash
+afdian ping --json
+# {"endpoint":"/api/open/ping","ok":true,"reply":"pong","user_id":"..."}
+
+afdian orders --json | jq -r '.list[] | select(.status == 2) | .out_trade_no'
+
+afdian orders --no 202610162137031029998943619 --json | jq '.found'
+```
+
+约定：
+
+- **键名排序**，中文不转义——和签名用的序列化是同一套，输出字节确定
+- **`plan` / `orders` / `sponsors` 原样透传接口结构**，脚本拿得到全部字段，
+  不用等 CLI 逐个加
+- **查不到订单仍是退出码 1**，JSON 里 `found: false`。
+  这样 `afdian orders --no X && 发货` 不会误发货
+- **参数错误时 stderr 也输出 JSON**（`error: "bad_arguments"`），
+  脚本能解析失败原因
+- 翻页翻到空页不算错误，正常返回 0
+
+失败响应统一带 `ok: false`。
 
 ## 设计取舍
 
@@ -155,4 +184,7 @@ git tag v0.1.3 && git push origin v0.1.3
 ## 许可
 
 [MIT](LICENSE)
+
+
+
 
