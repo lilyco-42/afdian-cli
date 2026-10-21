@@ -373,4 +373,3 @@ mod tests {
         assert!(HELP.contains("AFDIAN_TOKEN"));
     }
 }
-

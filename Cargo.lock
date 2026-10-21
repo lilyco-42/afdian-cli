@@ -14,7 +14,6 @@ version = "0.1.0"
 dependencies = [
  "lilyco-crypto",
  "serde_json",
- "tiny_lilyco",
  "ureq",
 ]
 
@@ -32,12 +31,6 @@ checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
 dependencies = [
  "hybrid-array",
 ]
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
@@ -154,25 +147,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "hash32"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
-name = "heapless"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
-dependencies = [
- "hash32",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -311,8 +285,9 @@ checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "lilyco-crypto"
-version = "0.1.0"
-source = "git+https://github.com/lilyco-42/lilyco-crypto?tag=v0.1.0#2108f7113c95aa9b4b1b6e7707ab3c91957a2722"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c20ba392cdd7fbaa13cab879269d547a97247bd76ba297b89861c31801b46a32"
 dependencies = [
  "hmac",
  "md-5",
@@ -453,7 +428,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
 dependencies = [
  "serde_core",
- "serde_derive",
 ]
 
 [[package]]
@@ -550,15 +524,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tiny_lilyco"
-version = "0.1.0"
-source = "git+https://github.com/lilyco-42/lilyco?branch=main#44e8c844e319cd96244257cfd23d73f642af4ac6"
-dependencies = [
- "heapless",
- "serde",
 ]
 
 [[package]]
