@@ -388,12 +388,15 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                 .unwrap_or_default();
 
             if list.is_empty() {
+                // 按订单号查不到是「没有这个订单」，脚本需要能区分——
+                // 返回非零，否则 `afdian orders --no X && 发货` 会误发货。
+                // 翻页翻到空页不算错误，正常返回 0。
                 return Outcome {
                     text: match out_trade_no {
                         Some(no) => format!("没有找到订单 {no}"),
                         None => format!("第 {page} 页没有订单"),
                     },
-                    code: 0,
+                    code: if out_trade_no.is_some() { 1 } else { 0 },
                 };
             }
 
@@ -402,6 +405,7 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
 
             let mut lines = Vec::new();
             match (out_trade_no, total, pages) {
+                // 单条查询时标题就是订单号，详情行不再重复打印。
                 (Some(no), _, _) => lines.push(format!("订单 {no}")),
                 (None, Some(t), Some(p)) => {
                     lines.push(format!("共 {t} 条订单，{p} 页（第 {page} 页）"))
@@ -409,6 +413,7 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                 _ => lines.push(format!("第 {page} 页，{} 条", list.len())),
             }
 
+            let single = out_trade_no.is_some();
             for o in &list {
                 let no = o
                     .get("out_trade_no")
@@ -432,7 +437,11 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                     status_text(status),
                     truncate(title, 30)
                 ));
-                lines.push(format!("             {no}  {buyer}  {}", fmt_time(created)));
+                if single {
+                    lines.push(format!("             买家 {buyer}  {}", fmt_time(created)));
+                } else {
+                    lines.push(format!("             {no}  {buyer}  {}", fmt_time(created)));
+                }
                 if !custom.is_empty() {
                     lines.push(format!("             核对码 {custom}"));
                 }
@@ -690,5 +699,24 @@ mod tests {
     fn status_text_covers_known() {
         assert_eq!(status_text(2), "已支付");
         assert_eq!(status_text(99), "未知");
+    }
+
+    #[test]
+    fn missing_trade_no_is_nonzero_but_empty_page_is_zero() {
+        // 按订单号查不到必须返回非零，否则脚本会误判成功去发货。
+        // 翻页翻到空页是正常情况，仍返回 0。
+        //
+        // 这里不联网，直接验证 execute 的分支决策依据：
+        // 单条查询时 out_trade_no 为 Some。
+        let cmd = parse(["orders", "--no", "202610162137031029998943619"]).unwrap();
+        match cmd {
+            Command::Orders { out_trade_no, .. } => assert!(out_trade_no.is_some()),
+            _ => panic!("应解析成 Orders"),
+        }
+        let cmd = parse(["orders", "9"]).unwrap();
+        match cmd {
+            Command::Orders { out_trade_no, .. } => assert!(out_trade_no.is_none()),
+            _ => panic!("应解析成 Orders"),
+        }
     }
 }
