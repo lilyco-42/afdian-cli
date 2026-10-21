@@ -569,10 +569,7 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: F
                 if single {
                     lines.push(format!("             买家 {buyer}  {}", fmt_time(created)));
                 } else {
-                    lines.push(format!(
-                        "             {no}  {buyer}  {}",
-                        fmt_time(created)
-                    ));
+                    lines.push(format!("             {no}  {buyer}  {}", fmt_time(created)));
                 }
                 if !custom.is_empty() {
                     lines.push(format!("             核对码 {custom}"));
@@ -630,7 +627,9 @@ fn sponsors(creds: &Credentials, page: u32, fmt_out: Format) -> Outcome {
 
             let mut lines = Vec::new();
             match (total, pages) {
-                (Some(t), Some(p)) => lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）")),
+                (Some(t), Some(p)) => {
+                    lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）"))
+                }
                 _ => lines.push(format!("第 {page} 页，{} 位", list.len())),
             }
 
@@ -869,10 +868,7 @@ mod tests {
         // 这里写成格式稳定的形式，CI 的 --check 才不会红。
         let (cmd, fmt) = parse_with_format(["orders", "--json"]).unwrap();
         match cmd {
-            Command::Orders {
-                page,
-                out_trade_no,
-            } => {
+            Command::Orders { page, out_trade_no } => {
                 assert_eq!(page, 1);
                 assert!(out_trade_no.is_none());
             }
@@ -898,10 +894,7 @@ mod tests {
         let no = "202610162137031029998943619";
         let (cmd, fmt) = parse_with_format(["orders", "--no", no, "--json"]).unwrap();
         match cmd {
-            Command::Orders {
-                page,
-                out_trade_no,
-            } => {
+            Command::Orders { page, out_trade_no } => {
                 assert_eq!(page, 1);
                 assert_eq!(out_trade_no.as_deref(), Some(no));
             }
@@ -914,10 +907,7 @@ mod tests {
     fn legacy_parse_ignores_json_flag() {
         // 老调用方用 parse()，不关心格式，行为不能变。
         match parse(["orders", "--json"]).unwrap() {
-            Command::Orders {
-                page,
-                out_trade_no,
-            } => {
+            Command::Orders { page, out_trade_no } => {
                 assert_eq!(page, 1);
                 assert!(out_trade_no.is_none());
             }
@@ -939,6 +929,3 @@ mod tests {
         assert!(!s.contains("\\u"));
     }
 }
-
-
-
