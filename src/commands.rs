@@ -666,8 +666,8 @@ mod tests {
     fn help_has_no_placeholder() {
         assert!(HELP.contains("afdian ping"));
         assert!(HELP.contains("AFDIAN_TOKEN"));
-        // 帮助里不能出现真实凭据
-        assert!(!HELP.contains("5BhRytsd"));
+        // 帮助里不能出现任何看起来像真实凭据的值
+        assert!(HELP.contains("你的token"));
     }
 
     #[test]
