@@ -371,14 +371,14 @@ fn compact(v: &serde_json::Value) -> String {
 }
 
 /// 失败时的统一输出。
-fn fail(fmt_out: fmt_out, code: i32, message: String) -> Outcome {
+fn fail(fmt_out: Format, code: i32, message: String) -> Outcome {
     Outcome {
         text: match fmt_out {
-            fmt_out::Json => compact(&serde_json::json!({
+            Format::Json => compact(&serde_json::json!({
                 "ok": false,
                 "error": message,
             })),
-            fmt_out::Text => format!("调用失败: {message}"),
+            Format::Text => format!("调用失败: {message}"),
         },
         code,
     }
@@ -386,17 +386,17 @@ fn fail(fmt_out: fmt_out, code: i32, message: String) -> Outcome {
 
 /// `ping` 要求 params 是合法 JSON 且非空——传 `{}` 会被判为
 /// "params was not valid json string"，必须带一个字段。
-fn ping(creds: &Credentials, fmt_out: fmt_out) -> Outcome {
+fn ping(creds: &Credentials, fmt_out: Format) -> Outcome {
     match api::call(creds, api::paths::PING, serde_json::json!({"ping": 1})) {
         Ok(_) => Outcome {
             text: match fmt_out {
-                fmt_out::Json => compact(&serde_json::json!({
+                Format::Json => compact(&serde_json::json!({
                     "ok": true,
                     "user_id": creds.user_id,
                     "endpoint": api::paths::PING,
                     "reply": "pong",
                 })),
-                fmt_out::Text => format!(
+                Format::Text => format!(
                     "凭据有效\nuser_id: {}\n接口: {} 返回 pong",
                     creds.user_id,
                     api::paths::PING
@@ -408,7 +408,7 @@ fn ping(creds: &Credentials, fmt_out: fmt_out) -> Outcome {
     }
 }
 
-fn plan(creds: &Credentials, plan_id: &str, fmt_out: fmt_out) -> Outcome {
+fn plan(creds: &Credentials, plan_id: &str, fmt_out: Format) -> Outcome {
     let params = serde_json::json!({"plan_id": plan_id});
     match api::call(creds, api::paths::QUERY_PLAN, params) {
         Ok(data) => {
@@ -416,7 +416,7 @@ fn plan(creds: &Credentials, plan_id: &str, fmt_out: fmt_out) -> Outcome {
                 return fail(fmt_out, 1, "接口未返回方案".to_string());
             };
 
-            if fmt_out == fmt_out::Json {
+            if fmt_out == Format::Json {
                 // 原样透传接口结构，脚本能拿到全部字段。
                 return Outcome {
                     text: compact(&serde_json::json!({
@@ -478,7 +478,7 @@ fn plan(creds: &Credentials, plan_id: &str, fmt_out: fmt_out) -> Outcome {
     }
 }
 
-fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: fmt_out) -> Outcome {
+fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: Format) -> Outcome {
     let params = match out_trade_no {
         Some(no) => serde_json::json!({"out_trade_no": no}),
         None => serde_json::json!({"page": page}),
@@ -499,14 +499,14 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: f
                 let code = if out_trade_no.is_some() { 1 } else { 0 };
                 return Outcome {
                     text: match fmt_out {
-                        fmt_out::Json => compact(&serde_json::json!({
+                        Format::Json => compact(&serde_json::json!({
                             "ok": code == 0,
                             "found": false,
                             "list": [],
                             "page": page,
                             "out_trade_no": out_trade_no,
                         })),
-                        fmt_out::Text => match out_trade_no {
+                        Format::Text => match out_trade_no {
                             Some(no) => format!("没有找到订单 {no}"),
                             None => format!("第 {page} 页没有订单"),
                         },
@@ -518,7 +518,7 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: f
             let total = data.get("total_count").and_then(|v| v.as_i64());
             let pages = data.get("total_page").and_then(|v| v.as_i64());
 
-            if fmt_out == fmt_out::Json {
+            if fmt_out == Format::Json {
                 return Outcome {
                     text: compact(&serde_json::json!({
                         "ok": true,
@@ -588,7 +588,7 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: f
     }
 }
 
-fn sponsors(creds: &Credentials, page: u32, fmt_out: fmt_out) -> Outcome {
+fn sponsors(creds: &Credentials, page: u32, fmt_out: Format) -> Outcome {
     let params = serde_json::json!({"page": page});
     match api::call(creds, api::paths::QUERY_SPONSOR, params) {
         Ok(data) => {
@@ -601,12 +601,12 @@ fn sponsors(creds: &Credentials, page: u32, fmt_out: fmt_out) -> Outcome {
             if list.is_empty() {
                 return Outcome {
                     text: match fmt_out {
-                        fmt_out::Json => compact(&serde_json::json!({
+                        Format::Json => compact(&serde_json::json!({
                             "ok": true,
                             "list": [],
                             "page": page,
                         })),
-                        fmt_out::Text => format!("第 {page} 页没有赞助者"),
+                        Format::Text => format!("第 {page} 页没有赞助者"),
                     },
                     code: 0,
                 };
@@ -615,7 +615,7 @@ fn sponsors(creds: &Credentials, page: u32, fmt_out: fmt_out) -> Outcome {
             let total = data.get("total_count").and_then(|v| v.as_i64());
             let pages = data.get("total_page").and_then(|v| v.as_i64());
 
-            if fmt_out == fmt_out::Json {
+            if fmt_out == Format::Json {
                 return Outcome {
                     text: compact(&serde_json::json!({
                         "ok": true,
@@ -654,7 +654,7 @@ fn sponsors(creds: &Credentials, page: u32, fmt_out: fmt_out) -> Outcome {
                 code: 0,
             }
         }
-        Err(e) => fail(format, 1, format!("{e}")),
+        Err(e) => fail(fmt_out, 1, format!("{e}")),
     }
 }
 
@@ -939,4 +939,6 @@ mod tests {
         assert!(!s.contains("\\u"));
     }
 }
+
+
 
