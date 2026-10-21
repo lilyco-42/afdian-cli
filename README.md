@@ -36,6 +36,7 @@ cargo binstall afdian-cli
 | Linux aarch64 | `afdian-aarch64-unknown-linux-musl` |
 | Windows x86_64 | `afdian-x86_64-pc-windows-msvc.exe` |
 | macOS Apple Silicon | `afdian-aarch64-apple-darwin` |
+| macOS Intel | `afdian-x86_64-apple-darwin` |
 
 Linux 产物是静态链接（musl），可以直接扔进 Alpine 容器。
 
@@ -154,3 +155,4 @@ git tag v0.1.3 && git push origin v0.1.3
 ## 许可
 
 [MIT](LICENSE)
+
