@@ -1,6 +1,6 @@
 [package]
 name = "afdian-cli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
@@ -49,3 +49,4 @@ disabled-strategies = ["quick-install", "compile"]
 # Linux 只产出 musl 静态二进制，gnu 请求映射过去。
 [package.metadata.binstall.overrides.'cfg(all(target_os = "linux", target_env = "gnu"))']
 pkg-url = "{ repo }/releases/download/v{ version }/afdian-{ target-arch }-unknown-linux-musl{ archive-suffix }"
+
