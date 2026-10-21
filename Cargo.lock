@@ -10,7 +10,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "afdian-cli"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "lilyco-crypto",
  "serde_json",
@@ -285,9 +285,9 @@ checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "lilyco-crypto"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c20ba392cdd7fbaa13cab879269d547a97247bd76ba297b89861c31801b46a32"
+checksum = "b6e54c6c289f117a9812a4d2b6997877ee5252b64b52c017a7c7f5315d3dbc7b"
 dependencies = [
  "hmac",
  "md-5",
