@@ -330,7 +330,7 @@ fn plan(creds: &Credentials, plan_id: &str) -> Outcome {
             let pay_month = p.get("pay_month").and_then(|v| v.as_i64()).unwrap_or(0);
 
             let mut lines = vec![
-                format!("{name}"),
+                name.to_string(),
                 format!("  价格     ¥{price}（{kind}，{pay_month} 个月）"),
                 format!("  plan_id  {plan_id}"),
             ];
