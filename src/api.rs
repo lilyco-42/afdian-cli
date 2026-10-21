@@ -9,6 +9,21 @@ use lilyco_crypto::afdian::SigningInput;
 /// 接口基址。
 pub const BASE: &str = "https://afdian.com";
 
+/// 爱发电开放接口的全部端点。
+///
+/// 只有这四个——2026-10 实测确认，其他路径一律 404。
+/// 没有「列出全部方案」的接口，`query-plan` 必须给 `plan_id`。
+pub mod paths {
+    /// 连通性与凭据自检。`params` 必须非空。
+    pub const PING: &str = "/api/open/ping";
+    /// 查单个方案详情。参数 `{"plan_id": "..."}`。
+    pub const QUERY_PLAN: &str = "/api/open/query-plan";
+    /// 查订单。参数 `{"page": N}` 或 `{"out_trade_no": "..."}`。
+    pub const QUERY_ORDER: &str = "/api/open/query-order";
+    /// 查赞助者。参数 `{"page": N}`。
+    pub const QUERY_SPONSOR: &str = "/api/open/query-sponsor";
+}
+
 /// 调用失败的原因。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApiError {
