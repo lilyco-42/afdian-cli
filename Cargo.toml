@@ -1,6 +1,6 @@
 [package]
 name = "afdian-cli"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT"
@@ -21,7 +21,7 @@ net = ["dep:ureq", "dep:serde_json"]
 # 密码学一律用现成实现，见 lilyco-crypto 的 AGENTS.md。
 # 用 crates.io 版本而不是 git——crates.io 不接受 git 依赖，
 # 而 cargo binstall 要求 crate 本身已发布。
-lilyco-crypto = { version = "0.1.1", default-features = false }
+lilyco-crypto = { version = "0.1.2", default-features = false }
 serde_json = { version = "1", optional = true }
 ureq = { version = "2", optional = true, features = ["json"] }
 
@@ -49,5 +49,6 @@ disabled-strategies = ["quick-install", "compile"]
 # Linux 只产出 musl 静态二进制，gnu 请求映射过去。
 [package.metadata.binstall.overrides.'cfg(all(target_os = "linux", target_env = "gnu"))']
 pkg-url = "{ repo }/releases/download/v{ version }/afdian-{ target-arch }-unknown-linux-musl{ archive-suffix }"
+
 
 
