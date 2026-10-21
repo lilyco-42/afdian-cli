@@ -1,0 +1,31 @@
+name: maint
+
+# 一次性维护：云端格式化 + 重新生成 Cargo.lock。本地禁止编译。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  maint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: 格式化
+        run: cargo fmt --all
+      - name: 重新生成 lock
+        run: cargo generate-lockfile
+      - name: 提交
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "无需改动"; else
+            git commit -m "chore: fmt + Cargo.lock"
+            git push
+          fi
