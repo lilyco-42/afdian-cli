@@ -106,15 +106,38 @@ pub fn validate_trade_no(no: &str) -> Result<(), ParseError> {
     Ok(())
 }
 
-/// 解析命令行参数。
+/// 解析命令行参数，只取命令。
+///
+/// `--json` 会被忽略——需要格式时用 [`parse_with_format`]。
 pub fn parse<I, S>(args: I) -> Result<Command, ParseError>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    let argv: Vec<String> = args.into_iter().map(|s| s.as_ref().to_string()).collect();
+    parse_with_format(args).map(|(cmd, _)| cmd)
+}
+
+/// 解析命令行参数，同时取出输出格式。
+///
+/// `--json` 可以出现在任意位置，解析前统一剥离。
+pub fn parse_with_format<I, S>(args: I) -> Result<(Command, Format), ParseError>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let raw: Vec<String> = args.into_iter().map(|s| s.as_ref().to_string()).collect();
+    let mut format = Format::Text;
+    let mut argv: Vec<String> = Vec::with_capacity(raw.len());
+    for a in raw {
+        if a == "--json" {
+            format = Format::Json;
+        } else {
+            argv.push(a);
+        }
+    }
+
     let Some(head) = argv.first().map(String::as_str) else {
-        return Ok(Command::Help);
+        return Ok((Command::Help, format));
     };
 
     let page_of = |rest: &[String]| -> Result<u32, ParseError> {
@@ -134,15 +157,18 @@ where
     };
 
     match head {
-        "ping" | "whoami" | "me" => Ok(Command::Ping),
+        "ping" | "whoami" | "me" => Ok((Command::Ping, format)),
         "plan" => {
             let id = argv
                 .get(1)
                 .ok_or_else(|| ParseError("用法：afdian plan <plan_id>".into()))?;
             validate_plan_id(id)?;
-            Ok(Command::Plan {
-                plan_id: id.clone(),
-            })
+            Ok((
+                Command::Plan {
+                    plan_id: id.clone(),
+                },
+                format,
+            ))
         }
         "orders" => {
             // orders --no 2026...  按订单号精确查
@@ -151,19 +177,28 @@ where
                     .get(2)
                     .ok_or_else(|| ParseError("用法：afdian orders --no <out_trade_no>".into()))?;
                 validate_trade_no(no)?;
-                return Ok(Command::Orders {
-                    page: 1,
-                    out_trade_no: Some(no.clone()),
-                });
+                return Ok((
+                    Command::Orders {
+                        page: 1,
+                        out_trade_no: Some(no.clone()),
+                    },
+                    format,
+                ));
             }
-            Ok(Command::Orders {
-                page: page_of(&argv[1..])?,
-                out_trade_no: None,
-            })
+            Ok((
+                Command::Orders {
+                    page: page_of(&argv[1..])?,
+                    out_trade_no: None,
+                },
+                format,
+            ))
         }
-        "sponsors" => Ok(Command::Sponsors {
-            page: page_of(&argv[1..])?,
-        }),
+        "sponsors" => Ok((
+            Command::Sponsors {
+                page: page_of(&argv[1..])?,
+            },
+            format,
+        )),
         "checkout" => {
             let plan_id = argv.get(1).ok_or_else(|| {
                 ParseError("用法：afdian checkout <plan_id> [custom_order_id]".into())
@@ -178,12 +213,15 @@ where
                         .unwrap_or(0)
                 )
             });
-            Ok(Command::Checkout {
-                plan_id: plan_id.clone(),
-                custom_order_id: custom,
-            })
+            Ok((
+                Command::Checkout {
+                    plan_id: plan_id.clone(),
+                    custom_order_id: custom,
+                },
+                format,
+            ))
         }
-        "help" | "-h" | "--help" => Ok(Command::Help),
+        "help" | "-h" | "--help" => Ok((Command::Help, format)),
         other => Err(ParseError(format!("未知命令：{other}"))),
     }
 }
@@ -193,6 +231,16 @@ pub fn checkout_url(plan_id: &str, custom_order_id: &str) -> String {
     format!(
         "https://afdian.com/order/create?plan_id={plan_id}&product_type=1&month=1&custom_order_id={custom_order_id}"
     )
+}
+
+/// 输出格式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Format {
+    /// 人类可读，带缩进与对齐。
+    #[default]
+    Text,
+    /// 单行紧凑 JSON，供脚本消费。
+    Json,
 }
 
 /// 执行结果。
@@ -216,6 +264,9 @@ afdian — 爱发电开放接口 CLI
   afdian checkout <plan_id> [单号]   生成收银台链接
   afdian help                       显示本帮助
 
+全局选项:
+  --json                            输出单行 JSON，供脚本消费
+
 凭据（按优先级）:
   1. 环境变量 AFDIAN_TOKEN / AFDIAN_USER_ID
   2. ~/.config/afdian-cli/config.toml
@@ -228,6 +279,7 @@ afdian — 爱发电开放接口 CLI
   afdian ping
   afdian plan 63f94afacc9d11f19fbe5254001e7c00
   afdian orders 1
+  afdian orders --json | jq '.list[0].out_trade_no'
   afdian checkout 63f94afacc9d11f19fbe5254001e7c00
 
 注意:
@@ -235,8 +287,16 @@ afdian — 爱发电开放接口 CLI
   方案 ID 可在 https://afdian.com/dashboard/plans 找到。
 ";
 
+/// 执行命令，默认文本输出。
+pub fn execute<F>(cmd: &Command, progress: F) -> Outcome
+where
+    F: FnMut(Progress),
+{
+    execute_with(cmd, Format::Text, progress)
+}
+
 /// 执行命令。`progress` 用于上报阶段，四端共用。
-pub fn execute<F>(cmd: &Command, mut progress: F) -> Outcome
+pub fn execute_with<F>(cmd: &Command, format: Format, mut progress: F) -> Outcome
 where
     F: FnMut(Progress),
 {
@@ -253,14 +313,18 @@ where
                 current: 1,
                 total: 1,
             });
-            Outcome {
-                text: format!(
-                    "{}\n\n把用户跳转到上面的链接即可。custom_order_id={}",
-                    checkout_url(plan_id, custom_order_id),
-                    custom_order_id
+            let url = checkout_url(plan_id, custom_order_id);
+            let text = match format {
+                Format::Json => compact(&serde_json::json!({
+                    "url": url,
+                    "plan_id": plan_id,
+                    "custom_order_id": custom_order_id,
+                })),
+                Format::Text => format!(
+                    "{url}\n\n把用户跳转到上面的链接即可。custom_order_id={custom_order_id}"
                 ),
-                code: 0,
-            }
+            };
+            Outcome { text, code: 0 }
         }
         _ => {
             progress(Progress::Init);
@@ -268,7 +332,14 @@ where
                 Ok(c) => c,
                 Err(e) => {
                     return Outcome {
-                        text: format!("{e}"),
+                        text: match format {
+                            Format::Json => compact(&serde_json::json!({
+                                "ok": false,
+                                "error": "credentials_missing",
+                                "message": format!("{e}"),
+                            })),
+                            Format::Text => format!("{e}"),
+                        },
                         code: 2,
                     }
                 }
@@ -279,46 +350,83 @@ where
                 total: 2,
             });
             match cmd {
-                Command::Ping => ping(&creds),
-                Command::Plan { plan_id } => plan(&creds, plan_id),
+                Command::Ping => ping(&creds, format),
+                Command::Plan { plan_id } => plan(&creds, plan_id, format),
                 Command::Orders { page, out_trade_no } => {
-                    orders(&creds, *page, out_trade_no.as_deref())
+                    orders(&creds, *page, out_trade_no.as_deref(), format)
                 }
-                Command::Sponsors { page } => sponsors(&creds, *page),
+                Command::Sponsors { page } => sponsors(&creds, *page, format),
                 _ => unreachable!(),
             }
         }
     }
 }
 
-/// `ping` 要求 params 是合法 JSON 且非空——传 `{}` 会被判为
-/// "params was not valid json string"，必须带一个字段。
-fn ping(creds: &Credentials) -> Outcome {
-    match api::call(creds, api::paths::PING, serde_json::json!({"ping": 1})) {
-        Ok(_) => Outcome {
-            text: format!(
-                "凭据有效\nuser_id: {}\n接口: /api/open/ping 返回 pong",
-                creds.user_id
-            ),
-            code: 0,
+/// 单行紧凑 JSON。
+///
+/// 直接复用 [`api::compact_json`]——它已经保证键有序、中文不转义，
+/// 与签名用的序列化完全一致，输出稳定可对账。
+fn compact(v: &serde_json::Value) -> String {
+    api::compact_json(v)
+}
+
+/// 失败时的统一输出。
+fn fail(fmt_out: fmt_out, code: i32, message: String) -> Outcome {
+    Outcome {
+        text: match fmt_out {
+            fmt_out::Json => compact(&serde_json::json!({
+                "ok": false,
+                "error": message,
+            })),
+            fmt_out::Text => format!("调用失败: {message}"),
         },
-        Err(e) => Outcome {
-            text: format!("调用失败: {e}"),
-            code: 1,
-        },
+        code,
     }
 }
 
-fn plan(creds: &Credentials, plan_id: &str) -> Outcome {
+/// `ping` 要求 params 是合法 JSON 且非空——传 `{}` 会被判为
+/// "params was not valid json string"，必须带一个字段。
+fn ping(creds: &Credentials, fmt_out: fmt_out) -> Outcome {
+    match api::call(creds, api::paths::PING, serde_json::json!({"ping": 1})) {
+        Ok(_) => Outcome {
+            text: match fmt_out {
+                fmt_out::Json => compact(&serde_json::json!({
+                    "ok": true,
+                    "user_id": creds.user_id,
+                    "endpoint": api::paths::PING,
+                    "reply": "pong",
+                })),
+                fmt_out::Text => format!(
+                    "凭据有效\nuser_id: {}\n接口: {} 返回 pong",
+                    creds.user_id,
+                    api::paths::PING
+                ),
+            },
+            code: 0,
+        },
+        Err(e) => fail(fmt_out, 1, format!("{e}")),
+    }
+}
+
+fn plan(creds: &Credentials, plan_id: &str, fmt_out: fmt_out) -> Outcome {
     let params = serde_json::json!({"plan_id": plan_id});
     match api::call(creds, api::paths::QUERY_PLAN, params) {
         Ok(data) => {
             let Some(p) = data.get("plan") else {
-                return Outcome {
-                    text: "接口未返回方案".to_string(),
-                    code: 1,
-                };
+                return fail(fmt_out, 1, "接口未返回方案".to_string());
             };
+
+            if fmt_out == fmt_out::Json {
+                // 原样透传接口结构，脚本能拿到全部字段。
+                return Outcome {
+                    text: compact(&serde_json::json!({
+                        "ok": true,
+                        "plan": p,
+                    })),
+                    code: 0,
+                };
+            }
+
             let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("-");
             let price = p.get("price").and_then(|v| v.as_str()).unwrap_or("?");
             let product_type = p.get("product_type").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -366,14 +474,11 @@ fn plan(creds: &Credentials, plan_id: &str) -> Outcome {
                 code: 0,
             }
         }
-        Err(e) => Outcome {
-            text: format!("调用失败: {e}"),
-            code: 1,
-        },
+        Err(e) => fail(fmt_out, 1, format!("{e}")),
     }
 }
 
-fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome {
+fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>, fmt_out: fmt_out) -> Outcome {
     let params = match out_trade_no {
         Some(no) => serde_json::json!({"out_trade_no": no}),
         None => serde_json::json!({"page": page}),
@@ -391,17 +496,41 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                 // 按订单号查不到是「没有这个订单」，脚本需要能区分——
                 // 返回非零，否则 `afdian orders --no X && 发货` 会误发货。
                 // 翻页翻到空页不算错误，正常返回 0。
+                let code = if out_trade_no.is_some() { 1 } else { 0 };
                 return Outcome {
-                    text: match out_trade_no {
-                        Some(no) => format!("没有找到订单 {no}"),
-                        None => format!("第 {page} 页没有订单"),
+                    text: match fmt_out {
+                        fmt_out::Json => compact(&serde_json::json!({
+                            "ok": code == 0,
+                            "found": false,
+                            "list": [],
+                            "page": page,
+                            "out_trade_no": out_trade_no,
+                        })),
+                        fmt_out::Text => match out_trade_no {
+                            Some(no) => format!("没有找到订单 {no}"),
+                            None => format!("第 {page} 页没有订单"),
+                        },
                     },
-                    code: if out_trade_no.is_some() { 1 } else { 0 },
+                    code,
                 };
             }
 
             let total = data.get("total_count").and_then(|v| v.as_i64());
             let pages = data.get("total_page").and_then(|v| v.as_i64());
+
+            if fmt_out == fmt_out::Json {
+                return Outcome {
+                    text: compact(&serde_json::json!({
+                        "ok": true,
+                        "found": true,
+                        "list": list,
+                        "total_count": total,
+                        "total_page": pages,
+                        "page": page,
+                    })),
+                    code: 0,
+                };
+            }
 
             let mut lines = Vec::new();
             match (out_trade_no, total, pages) {
@@ -440,7 +569,10 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                 if single {
                     lines.push(format!("             买家 {buyer}  {}", fmt_time(created)));
                 } else {
-                    lines.push(format!("             {no}  {buyer}  {}", fmt_time(created)));
+                    lines.push(format!(
+                        "             {no}  {buyer}  {}",
+                        fmt_time(created)
+                    ));
                 }
                 if !custom.is_empty() {
                     lines.push(format!("             核对码 {custom}"));
@@ -452,14 +584,11 @@ fn orders(creds: &Credentials, page: u32, out_trade_no: Option<&str>) -> Outcome
                 code: 0,
             }
         }
-        Err(e) => Outcome {
-            text: format!("调用失败: {e}"),
-            code: 1,
-        },
+        Err(e) => fail(fmt_out, 1, format!("{e}")),
     }
 }
 
-fn sponsors(creds: &Credentials, page: u32) -> Outcome {
+fn sponsors(creds: &Credentials, page: u32, fmt_out: fmt_out) -> Outcome {
     let params = serde_json::json!({"page": page});
     match api::call(creds, api::paths::QUERY_SPONSOR, params) {
         Ok(data) => {
@@ -471,7 +600,14 @@ fn sponsors(creds: &Credentials, page: u32) -> Outcome {
 
             if list.is_empty() {
                 return Outcome {
-                    text: format!("第 {page} 页没有赞助者"),
+                    text: match fmt_out {
+                        fmt_out::Json => compact(&serde_json::json!({
+                            "ok": true,
+                            "list": [],
+                            "page": page,
+                        })),
+                        fmt_out::Text => format!("第 {page} 页没有赞助者"),
+                    },
                     code: 0,
                 };
             }
@@ -479,11 +615,22 @@ fn sponsors(creds: &Credentials, page: u32) -> Outcome {
             let total = data.get("total_count").and_then(|v| v.as_i64());
             let pages = data.get("total_page").and_then(|v| v.as_i64());
 
+            if fmt_out == fmt_out::Json {
+                return Outcome {
+                    text: compact(&serde_json::json!({
+                        "ok": true,
+                        "list": list,
+                        "total_count": total,
+                        "total_page": pages,
+                        "page": page,
+                    })),
+                    code: 0,
+                };
+            }
+
             let mut lines = Vec::new();
             match (total, pages) {
-                (Some(t), Some(p)) => {
-                    lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）"))
-                }
+                (Some(t), Some(p)) => lines.push(format!("共 {t} 位赞助者，{p} 页（第 {page} 页）")),
                 _ => lines.push(format!("第 {page} 页，{} 位", list.len())),
             }
 
@@ -507,10 +654,7 @@ fn sponsors(creds: &Credentials, page: u32) -> Outcome {
                 code: 0,
             }
         }
-        Err(e) => Outcome {
-            text: format!("调用失败: {e}"),
-            code: 1,
-        },
+        Err(e) => fail(format, 1, format!("{e}")),
     }
 }
 
@@ -719,4 +863,80 @@ mod tests {
             _ => panic!("应解析成 Orders"),
         }
     }
+    #[test]
+    fn json_flag_is_stripped_and_detected() {
+        // 用 match 而不是 struct literal 断言：rustfmt 会把长字面量拆行，
+        // 这里写成格式稳定的形式，CI 的 --check 才不会红。
+        let (cmd, fmt) = parse_with_format(["orders", "--json"]).unwrap();
+        match cmd {
+            Command::Orders {
+                page,
+                out_trade_no,
+            } => {
+                assert_eq!(page, 1);
+                assert!(out_trade_no.is_none());
+            }
+            _ => panic!("应解析成 Orders"),
+        }
+        assert_eq!(fmt, Format::Json);
+
+        // 标志可以出现在任意位置
+        let (cmd, fmt) = parse_with_format(["--json", "sponsors", "2"]).unwrap();
+        match cmd {
+            Command::Sponsors { page } => assert_eq!(page, 2),
+            _ => panic!("应解析成 Sponsors"),
+        }
+        assert_eq!(fmt, Format::Json);
+
+        // 不带标志默认文本
+        let (_, fmt) = parse_with_format(["ping"]).unwrap();
+        assert_eq!(fmt, Format::Text);
+    }
+
+    #[test]
+    fn json_flag_does_not_break_orders_by_trade_no() {
+        let no = "202610162137031029998943619";
+        let (cmd, fmt) = parse_with_format(["orders", "--no", no, "--json"]).unwrap();
+        match cmd {
+            Command::Orders {
+                page,
+                out_trade_no,
+            } => {
+                assert_eq!(page, 1);
+                assert_eq!(out_trade_no.as_deref(), Some(no));
+            }
+            _ => panic!("应解析成 Orders"),
+        }
+        assert_eq!(fmt, Format::Json);
+    }
+
+    #[test]
+    fn legacy_parse_ignores_json_flag() {
+        // 老调用方用 parse()，不关心格式，行为不能变。
+        match parse(["orders", "--json"]).unwrap() {
+            Command::Orders {
+                page,
+                out_trade_no,
+            } => {
+                assert_eq!(page, 1);
+                assert!(out_trade_no.is_none());
+            }
+            _ => panic!("应解析成 Orders"),
+        }
+    }
+
+    #[test]
+    fn compact_has_no_spaces() {
+        let s = compact(&serde_json::json!({"a": 1, "b": [1, 2]}));
+        assert_eq!(s, r#"{"a":1,"b":[1,2]}"#);
+        assert!(!s.contains(' '));
+    }
+
+    #[test]
+    fn compact_keeps_cjk_raw() {
+        let s = compact(&serde_json::json!({"name": "中文"}));
+        assert!(s.contains("中文"));
+        assert!(!s.contains("\\u"));
+    }
 }
+

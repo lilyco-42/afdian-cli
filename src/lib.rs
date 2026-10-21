@@ -15,6 +15,6 @@ pub mod commands;
 pub mod config;
 pub mod schema;
 
-pub use commands::{execute, parse, Command, HELP};
+pub use commands::{execute, execute_with, parse, parse_with_format, Command, Format, HELP};
 pub use config::Credentials;
 pub use schema::{CommandSchema, Progress};
